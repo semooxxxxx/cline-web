@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>Cline Chat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+*{box-sizing:border-box}
+
+/* ---------- Design tokens (black and white) ---------- */
+:root{
+  --bg:#000000;
+  --sidebar:#0a0a0a;
+  --surface:#141414;
+  --border:#2a2a2a;
+  --text:#f5f5f5;
+  --muted:#8a8a8a;
+  --user-bubble:#1a1a1a;
+  --hover:#1f1f1f;
+  --accent:#ffffff;
+  --accent-hover:#d9d9d9;
+  --accent-text:#000000;
+  --overlay:rgba(0,0,0,.6);
+  --danger:#ff6b6b;
+  color-scheme:dark;
+}
+
+body{
+  margin:0;background:var(--bg);color:var(--text);
+  font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  height:100vh;height:100dvh;display:flex;overflow:hidden;
+  -webkit-font-smoothing:antialiased;
+  -webkit-tap-highlight-color:transparent;
+  overscroll-behavior:none
+}
+button,textarea,input,select{font:inherit}
+button{cursor:pointer}
+
+/* ---------- Sidebar ---------- */
+.sidebar{
+  width:260px;background:var(--sidebar);padding:14px 12px;
+  display:flex;flex-direction:column;gap:10px;flex-shrink:0;
+  border-right:1px solid var(--border)
+}
+.new-chat{
+  background:var(--surface);border:1px solid var(--border);color:var(--text);
+  border-radius:10px;padding:10px 12px;text-align:left;font-weight:500
+}
+.new-chat:hover{background:var(--hover)}
+.field{padding:0 4px}
+.field-label{display:block;font-size:12px;color:var(--muted);margin:4px 4px 4px}
+.folder-input{
+  width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;
+  background:var(--surface);color:var(--text);font-size:13px
+}
+.folder-input:focus{outline:none;border-color:var(--accent)}
+.field-note{font-size:11px;color:var(--muted);margin:4px 4px 0}
+.sidebar-title{color:var(--muted);font-size:12px;margin:10px 8px 0}
+#history{display:flex;flex-direction:column;gap:2px;overflow-y:auto;min-height:0}
+.history-row{display:flex;align-items:center;gap:2px;border-radius:8px}
+.history-row:hover{background:var(--hover)}
+.history-row.active{background:var(--hover)}
+.history-item{
+  flex:1;min-width:0;border:0;background:transparent;color:var(--text);
+  padding:9px 10px;border-radius:8px;text-align:left;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px
+}
+.icon-btn{
+  background:transparent;border:0;color:var(--muted);
+  padding:6px 7px;border-radius:6px;font-size:13px;flex-shrink:0
+}
+.icon-btn:hover{color:var(--text);background:var(--surface)}
+.icon-btn.danger:hover{color:var(--danger)}
+.sidebar-footer{margin-top:auto;color:var(--muted);font-size:12px;line-height:1.8}
+
+/* ---------- Main ---------- */
+.main{flex:1;min-width:0;display:flex;flex-direction:column;position:relative}
+.topbar{
+  height:56px;display:flex;align-items:center;gap:10px;
+  padding:0 18px;border-bottom:1px solid var(--border);flex-shrink:0;
+  background:var(--bg)
+}
+.menu-btn{display:none}
+.brand{display:flex;align-items:center;min-width:0}
+.brand img{height:22px;width:auto;display:block}
+.model-select{
+  margin-inline-start:auto;max-width:58%;min-width:0;
+  background:var(--surface);color:var(--text);
+  border:1px solid var(--border);border-radius:8px;
+  padding:6px 8px;font-size:13px;text-overflow:ellipsis
+}
+.model-select:focus{outline:none;border-color:var(--accent)}
+.model-select:disabled{opacity:.6}
+
+.messages{
+  flex:1;overflow-y:auto;width:100%;padding:28px 16px;
+  display:flex;flex-direction:column;gap:22px
+}
+
+/* ---------- Welcome ---------- */
+.welcome{
+  margin:auto;max-width:600px;text-align:center;padding:25px 10px
+}
+.welcome-icon{width:64px;height:auto;display:block;margin:0 auto 18px}
+.welcome h1{
+  font-size:28px;font-weight:500;margin-bottom:12px;color:var(--text)
+}
+.welcome p{color:var(--muted);line-height:1.8;font-size:15px}
+
+/* ---------- Messages ---------- */
+.message{
+  width:100%;max-width:760px;margin:0 auto;line-height:1.75;
+  white-space:pre-wrap;overflow-wrap:anywhere;font-size:15.5px
+}
+.user-message{display:flex;justify-content:flex-end}
+.user-bubble{
+  background:var(--user-bubble);border:1px solid var(--border);
+  border-radius:18px;padding:10px 16px;max-width:85%;color:var(--text)
+}
+.assistant-message{padding:2px 0}
+.role{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  font-size:12px;color:var(--muted);font-weight:500;margin-bottom:6px;
+  letter-spacing:.2px
+}
+.copy-btn{
+  background:transparent;border:1px solid var(--border);color:var(--muted);
+  border-radius:6px;padding:3px 10px;font-size:12px;font-family:inherit;flex-shrink:0
+}
+.copy-btn:hover{color:var(--text);background:var(--hover)}
+
+/* Markdown body */
+.rich{white-space:normal;overflow-wrap:anywhere}
+.rich p{margin:0 0 10px}
+.rich p:last-child{margin-bottom:0}
+.rich h3,.rich h4,.rich h5{margin:14px 0 6px;font-weight:600;line-height:1.3}
+.rich h3{font-size:18px}
+.rich h4{font-size:16px}
+.rich h5{font-size:15px}
+.rich ul,.rich ol{margin:0 0 10px;padding-inline-start:22px}
+.rich li{margin:2px 0}
+.rich strong{font-weight:600}
+.rich code{
+  font:0.9em ui-monospace,Menlo,Consolas,monospace;
+  background:var(--hover);padding:1px 5px;border-radius:5px
+}
+
+/* Code blocks */
+.code-block{
+  direction:ltr;text-align:left;margin:10px 0;
+  border:1px solid var(--border);border-radius:10px;overflow:hidden;
+  background:#0d0d0d
+}
+.code-head{
+  display:flex;justify-content:space-between;align-items:center;gap:8px;
+  padding:6px 10px;background:#1a1a1a;color:#a0a0a0;
+  font:12px ui-monospace,Menlo,Consolas,monospace
+}
+.code-block pre{
+  margin:0;padding:12px;overflow-x:auto;white-space:pre;
+  color:#f2f2f2;font:13px/1.5 ui-monospace,Menlo,Consolas,monospace
+}
+.code-block code{background:none;padding:0;font:inherit}
+.code-head .copy-btn{border-color:#444;color:#ddd}
+.code-head .copy-btn:hover{background:#262626}
+
+/* Tool activity */
+.tools{margin:0 0 8px;font-size:13px;color:var(--muted)}
+.tools summary{cursor:pointer;padding:4px 0}
+.tool-item{padding:4px 0 4px 10px;border-inline-start:2px solid var(--border);margin:4px 0}
+.tool-item strong{font-weight:600;color:var(--text)}
+.tool-item.tool-error strong{color:var(--danger)}
+.tool-item pre{
+  white-space:pre-wrap;overflow-wrap:anywhere;margin:4px 0 0;max-height:160px;overflow:auto;
+  font:12px/1.4 ui-monospace,Menlo,Consolas,monospace;color:var(--muted)
+}
+.stats{font-size:12px;color:var(--muted);margin-top:8px}
+
+/* ---------- Composer ---------- */
+.composer-wrap{padding:12px 16px 18px;flex-shrink:0;background:var(--bg)}
+.composer{max-width:760px;margin:auto}
+.input-box{
+  border:1px solid var(--border);background:var(--surface);border-radius:20px;
+  padding:10px 10px 10px 14px;display:flex;align-items:flex-end;gap:10px;
+  box-shadow:0 1px 2px rgba(0,0,0,.04)
+}
+.input-box:focus-within{border-color:var(--accent)}
+textarea{
+  flex:1;min-width:0;resize:none;max-height:180px;
+  border:0;outline:0;background:transparent;color:var(--text);
+  line-height:1.6;padding:6px 4px;font-size:16px
+}
+textarea::placeholder{color:var(--muted)}
+.send{
+  border:0;background:var(--accent);color:var(--accent-text);border-radius:50%;
+  width:36px;height:36px;padding:0;flex-shrink:0;line-height:0;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .15s
+}
+.send svg{display:block;margin:0}
+.send:hover:not(:disabled){background:var(--accent-hover)}
+.send:disabled{opacity:.35;cursor:default}
+.hint{text-align:center;font-size:11px;color:var(--muted);margin-top:10px}
+.status{font-size:12px;color:var(--muted);min-height:18px;margin:4px 10px}
+
+/* Scrim behind the open drawer (hidden on desktop) */
+.overlay{display:none}
+
+/* ---------- Mobile ---------- */
+@media(max-width:650px){
+  /* Hover styles only make sense with a mouse */
+  .new-chat:hover,.history-row:hover{background:inherit}
+  .new-chat:active,.history-item:active{background:var(--hover)}
+  .history-row.active{background:var(--hover)}
+
+  /* Drawer: fixed to the viewport (so it never widens the page),
+     slides in from the left edge */
+  .sidebar{
+    position:fixed;z-index:6;top:0;bottom:0;left:0;right:auto;
+    width:min(84vw,300px);
+    transform:translateX(-105%);transition:transform .22s ease;
+    visibility:hidden;
+    padding:calc(14px + env(safe-area-inset-top)) 12px calc(14px + env(safe-area-inset-bottom));
+    border-right:1px solid var(--border);border-left:0
+  }
+  .sidebar.open{transform:translateX(0);visibility:visible}
+  .sidebar.open + .overlay{
+    display:block;position:fixed;inset:0;z-index:5;
+    background:var(--overlay)
+  }
+
+  /* Larger tap targets */
+  .menu-btn{
+    display:flex;align-items:center;justify-content:center;
+    width:44px;height:44px;margin-inline-start:-8px;
+    background:none;border:0;color:var(--text);font-size:24px;border-radius:10px
+  }
+  .menu-btn:active{background:var(--hover)}
+  .new-chat{padding:13px 12px;font-size:15px}
+  .history-item{padding:12px 10px;font-size:15px}
+  .icon-btn{padding:9px 10px}
+  .send{width:42px;height:42px}
+  .send svg{width:20px;height:20px}
+
+  .topbar{
+    height:auto;min-height:56px;padding:calc(6px + env(safe-area-inset-top)) 12px 6px;
+    gap:6px
+  }
+  .brand{font-size:17px;white-space:nowrap}
+  .model-select{font-size:12px;padding:5px 6px;max-width:55%}
+
+  .messages{padding:20px 16px;gap:20px}
+  .message{font-size:16px;line-height:1.7}
+  .welcome{padding:20px 4px}
+  .welcome h1{font-size:26px}
+  .welcome p{font-size:15px}
+
+  .composer-wrap{
+    padding:8px 10px calc(10px + env(safe-area-inset-bottom))
+  }
+  .input-box{padding:8px 8px 8px 12px;border-radius:22px}
+  .hint{font-size:10px;margin-top:6px}
+  .status{margin:2px 8px}
+}
+</style>
+</head>
+
+<body>
+<aside class="sidebar" id="sidebar">
+  <button class="new-chat" id="newChat">＋ New chat</button>
+  <div class="field">
+    <label class="field-label" for="folder">Project folder</label>
+    <input class="folder-input" id="folder" autocomplete="off"
+      placeholder="e.g. projects/app (empty = home)">
+    <div class="field-note">Applies to new chats.</div>
+  </div>
+  <div class="sidebar-title">Your chats on this device</div>
+  <div id="history"></div>
+  <div class="sidebar-footer">
+    Cline Chat<br>
+    Runs on the Cline installed on your machine.
+  </div>
+</aside>
+<div class="overlay" id="overlay"></div>
+
+<main class="main">
+  <header class="topbar">
+    <button class="menu-btn" id="menuBtn" aria-label="Menu" aria-expanded="false">☰</button>
+    <div class="brand"><img src="assets/logo.png" alt="Cline"></div>
+    <select class="model-select" id="modelSelect" aria-label="Model">
+      <option>Loading models...</option>
+    </select>
+  </header>
+
+  <section class="messages" id="messages">
+    <div class="welcome" id="welcome">
+      <img class="welcome-icon" src="assets/icon.png" alt="">
+      <h1>Welcome</h1>
+      <p>What do you want to work on today?<br>Type a message below to start.</p>
+    </div>
+  </section>
+
+  <footer class="composer-wrap">
+    <div class="composer">
+      <div class="status" id="status"></div>
+      <form class="input-box" id="chatForm">
+        <textarea id="prompt" rows="1"
+          placeholder="Message Cline..."
+          aria-label="Your message"></textarea>
+        <button class="send" id="send" type="submit" aria-label="Send" title="Send"></button>
+      </form>
+      <div class="hint">⚠️ Cline edits files and runs commands without asking. Review the result after each reply.</div>
+    </div>
+  </footer>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const messages = $('messages');
+const promptBox = $('prompt');
+const modelSelect = $('modelSelect');
+const folderInput = $('folder');
+const NEW_CHAT_TITLE = 'New chat';
+const MODEL_KEY = 'clineModel';
+const CHATS_KEY = 'clineChats';
+const FOLDER_KEY = 'clineFolder';
+
+const ICON_SEND = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 19V5M5.5 11.5L12 5l6.5 6.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ICON_STOP = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2.5" fill="currentColor"/></svg>';
+
+let busy = false;
+let chats = [];
+let currentChat = null;
+let allModels = [];
+let currentDefault = '';
+
+/* ---------- Conversations ---------- */
+function saveChats(){
+  try{ localStorage.setItem(CHATS_KEY, JSON.stringify(chats.slice(0, 50))); }catch{}
+}
+
+function loadChats(){
+  try{
+    const arr = JSON.parse(localStorage.getItem(CHATS_KEY) || '[]');
+    if(Array.isArray(arr)) chats = arr;
+  }catch{}
+}
+
+function newChat(){
+  currentChat = {
+    id: Date.now().toString(),
+    title: NEW_CHAT_TITLE,
+    cwd: folderInput.value.trim(),
+    messages: []
+  };
+  chats.unshift(currentChat);
+  renderHistory();
+  renderMessages();
+  $('status').textContent = '';
+  promptBox.focus();
+  $('sidebar').classList.remove('open');
+}
+
+function openChat(chat){
+  if(busy && chat === currentChat) return;
+  currentChat = chat;
+  renderHistory();
+  renderMessages();
+  $('sidebar').classList.remove('open');
+}
+
+function renameChat(chat){
+  const name = prompt('Rename chat', chat.title);
+  if(name === null || !name.trim()) return;
+  chat.title = name.trim().slice(0, 60);
+  renderHistory();
+  saveChats();
+}
+
+function deleteChat(chat){
+  if(busy && chat === currentChat){
+    alert('Wait for the current reply to finish before deleting this chat.');
+    return;
+  }
+  if(!confirm('Delete this chat? This cannot be undone.')) return;
+  chats = chats.filter(c => c !== chat);
+  if(currentChat === chat){
+    currentChat = chats[0] || null;
+  }
+  if(!currentChat){
+    newChat();
+    return;
+  }
+  renderHistory();
+  renderMessages();
+}
+
+function renderHistory(){
+  const root = $('history');
+  root.replaceChildren();
+
+  chats.forEach(chat => {
+    const row = document.createElement('div');
+    row.className = 'history-row' + (chat === currentChat ? ' active' : '');
+
+    const open = document.createElement('button');
+    open.className = 'history-item';
+    open.textContent = chat.title;
+    open.title = chat.title;
+    open.onclick = () => openChat(chat);
+
+    const ren = document.createElement('button');
+    ren.className = 'icon-btn';
+    ren.type = 'button';
+    ren.title = 'Rename';
+    ren.setAttribute('aria-label', 'Rename chat');
+    ren.textContent = '✎';
+    ren.onclick = () => renameChat(chat);
+
+    const del = document.createElement('button');
+    del.className = 'icon-btn danger';
+    del.type = 'button';
+    del.title = 'Delete';
+    del.setAttribute('aria-label', 'Delete chat');
+    del.textContent = '✕';
+    del.onclick = () => deleteChat(chat);
+
+    row.append(open, ren, del);
+    root.appendChild(row);
+  });
+}
+
+/* ---------- Rendering ---------- */
+// Only DOM nodes and textContent are used, never innerHTML, so model output
+// cannot inject markup.
+function copyText(text, btn){
+  const done = () => {
+    const old = btn.textContent;
+    btn.textContent = 'Copied ✓';
+    setTimeout(() => { btn.textContent = old; }, 1500);
+  };
+  const fallback = () => {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try{ document.execCommand('copy'); done(); }catch{}
+    ta.remove();
+  };
+  if(navigator.clipboard && window.isSecureContext){
+    navigator.clipboard.writeText(text).then(done, fallback);
+  }else{
+    fallback();
+  }
+}
+
+// Inline: **bold**, *italic*, `code`. Line breaks become <br>.
+const INLINE_TOKEN = /(\*\*[^*\n]+\*\*|`[^`\n]+`|\*[^*\n]+\*)/g;
+
+function appendInline(el, text){
+  text.split('\n').forEach((line, i) => {
+    if(i) el.appendChild(document.createElement('br'));
+    const re = new RegExp(INLINE_TOKEN.source, 'g');
+    let last = 0;
+    let m;
+    while((m = re.exec(line)) !== null){
+      if(m.index > last) el.appendChild(document.createTextNode(line.slice(last, m.index)));
+      const t = m[0];
+      let node;
+      if(t.startsWith('**')){
+        node = document.createElement('strong');
+        node.textContent = t.slice(2, -2);
+      }else if(t.startsWith('`')){
+        node = document.createElement('code');
+        node.textContent = t.slice(1, -1);
+      }else{
+        node = document.createElement('em');
+        node.textContent = t.slice(1, -1);
+      }
+      el.appendChild(node);
+      last = re.lastIndex;
+    }
+    if(last < line.length) el.appendChild(document.createTextNode(line.slice(last)));
+  });
+}
+
+// Block-level Markdown: headings, bullet and numbered lists, paragraphs.
+function renderMarkdown(parent, text){
+  let para = [];
+  let list = null;
+
+  const flushPara = () => {
+    if(para.length){
+      const p = document.createElement('p');
+      appendInline(p, para.join('\n'));
+      parent.appendChild(p);
+      para = [];
+    }
+  };
+  const ensureList = tag => {
+    if(!list || list.tag !== tag){
+      flushPara();
+      list = { tag, el: document.createElement(tag) };
+      parent.appendChild(list.el);
+    }
+    return list.el;
+  };
+
+  text.split('\n').forEach(raw => {
+    const line = raw.replace(/\s+$/, '');
+    let m;
+
+    if(!line.trim()){
+      flushPara();
+      list = null;
+      return;
+    }
+    if((m = line.match(/^(#{1,3})\s+(.*)$/))){
+      flushPara();
+      list = null;
+      const h = document.createElement('h' + (m[1].length + 2));
+      appendInline(h, m[2]);
+      parent.appendChild(h);
+      return;
+    }
+    if((m = line.match(/^\s*[-*•]\s+(.*)$/))){
+      const li = document.createElement('li');
+      appendInline(li, m[1]);
+      ensureList('ul').appendChild(li);
+      return;
+    }
+    if((m = line.match(/^\s*\d+[.)]\s+(.*)$/))){
+      const li = document.createElement('li');
+      appendInline(li, m[1]);
+      ensureList('ol').appendChild(li);
+      return;
+    }
+    list = null;
+    para.push(line);
+  });
+  flushPara();
+}
+
+function codeBlock(lang, code){
+  const wrap = document.createElement('div');
+  wrap.className = 'code-block';
+
+  const head = document.createElement('div');
+  head.className = 'code-head';
+  const label = document.createElement('span');
+  label.textContent = lang || 'code';
+  const btn = document.createElement('button');
+  btn.className = 'copy-btn';
+  btn.type = 'button';
+  btn.textContent = 'Copy';
+  btn.onclick = () => copyText(code, btn);
+  head.append(label, btn);
+
+  const pre = document.createElement('pre');
+  const c = document.createElement('code');
+  c.textContent = code;
+  pre.appendChild(c);
+
+  wrap.append(head, pre);
+  return wrap;
+}
+
+// Splits fenced code blocks out, renders everything else as Markdown.
+function renderRich(parent, text){
+  const re = /```([\w+#.-]*)[ \t]*\n([\s\S]*?)```/g;
+  let last = 0;
+  let m;
+  while((m = re.exec(text)) !== null){
+    renderMarkdown(parent, text.slice(last, m.index));
+    parent.appendChild(codeBlock(m[1], m[2].replace(/\n$/, '')));
+    last = re.lastIndex;
+  }
+  renderMarkdown(parent, text.slice(last));
+}
+
+function renderTools(row, tools){
+  const d = document.createElement('details');
+  d.className = 'tools';
+  const s = document.createElement('summary');
+  const failed = tools.filter(t => t.error).length;
+  s.textContent = `Used ${tools.length} tool${tools.length > 1 ? 's' : ''}` +
+    (failed ? ` · ${failed} failed` : '');
+  d.appendChild(s);
+
+  tools.forEach(t => {
+    const item = document.createElement('div');
+    item.className = 'tool-item' + (t.error ? ' tool-error' : '');
+    const name = document.createElement('strong');
+    name.textContent = (t.error ? '✗ ' : '✓ ') + t.name;
+    item.appendChild(name);
+    const detail = t.error || t.output;
+    if(detail){
+      const pre = document.createElement('pre');
+      pre.textContent = detail;
+      item.appendChild(pre);
+    }
+    d.appendChild(item);
+  });
+
+  row.appendChild(d);
+}
+
+function statsLine(s){
+  if(!s) return '';
+  const parts = [];
+  if(s.iterations != null) parts.push(`${s.iterations} step${s.iterations === 1 ? '' : 's'}`);
+  if(s.durationMs != null) parts.push(`${(s.durationMs / 1000).toFixed(1)}s`);
+  if(s.inputTokens != null || s.outputTokens != null){
+    parts.push(`${s.inputTokens ?? 0} in / ${s.outputTokens ?? 0} out tokens`);
+  }
+  return parts.join(' · ');
+}
+
+function renderMessages(){
+  saveChats();
+  messages.replaceChildren();
+
+  if(!currentChat || currentChat.messages.length === 0){
+    const welcome = document.createElement('div');
+    welcome.className = 'welcome';
+    welcome.innerHTML =
+      '<img class="welcome-icon" src="assets/icon.png" alt=""><h1>Welcome</h1><p>What do you want to work on today?<br>Type a message below to start.</p>';
+    messages.appendChild(welcome);
+    return;
+  }
+
+  currentChat.messages.forEach(m => {
+    const row = document.createElement('div');
+    row.className = 'message ' +
+      (m.role === 'user' ? 'user-message' : 'assistant-message');
+
+    if(m.role === 'user'){
+      const bubble = document.createElement('div');
+      bubble.className = 'user-bubble';
+      bubble.textContent = m.text;
+      row.appendChild(bubble);
+    }else{
+      const role = document.createElement('div');
+      role.className = 'role';
+      const name = document.createElement('span');
+      name.textContent = 'Cline';
+      const copyAll = document.createElement('button');
+      copyAll.className = 'copy-btn';
+      copyAll.type = 'button';
+      copyAll.textContent = 'Copy reply';
+      copyAll.onclick = () => copyText(m.text, copyAll);
+      role.append(name, copyAll);
+
+      row.appendChild(role);
+      if(m.tools && m.tools.length) renderTools(row, m.tools);
+
+      const body = document.createElement('div');
+      body.className = 'rich';
+      renderRich(body, m.text);
+      row.appendChild(body);
+
+      const stats = statsLine(m.stats);
+      if(stats){
+        const s = document.createElement('div');
+        s.className = 'stats';
+        s.textContent = stats;
+        row.appendChild(s);
+      }
+    }
+
+    messages.appendChild(row);
+  });
+
+  messages.scrollTop = messages.scrollHeight;
+}
+
+/* ---------- Busy state (send button becomes Stop) ---------- */
+function setBusy(on){
+  busy = on;
+  const send = $('send');
+  send.innerHTML = on ? ICON_STOP : ICON_SEND;
+  send.setAttribute('aria-label', on ? 'Stop' : 'Send');
+  send.title = on ? 'Stop' : 'Send';
+  modelSelect.disabled = on || modelSelect.dataset.empty === '1';
+}
+
+/* ---------- Sending ---------- */
+// Tool calls from the CLI's JSON events (content_end for tool results).
+function extractTools(events){
+  const out = [];
+  (events || []).forEach(ev => {
+    const e = ev && ev.type === 'agent_event' ? ev.event : null;
+    if(!e || e.type !== 'content_end' || e.contentType !== 'tool') return;
+    if(e.toolName === 'ask_question') return;
+    let output = '';
+    if(e.output != null){
+      output = typeof e.output === 'string' ? e.output : JSON.stringify(e.output);
+      output = output.slice(0, 1500);
+    }
+    out.push({ name: e.toolName || 'tool', error: e.error || '', output });
+  });
+  return out;
+}
+
+async function sendMessage(text){
+  if(busy || !text.trim()) return;
+
+  if(!currentChat) newChat();
+
+  const chat = currentChat;
+  chat.messages.push({role:'user', text});
+  if(chat.title === NEW_CHAT_TITLE){
+    chat.title = text.slice(0,32);
+  }
+
+  renderHistory();
+  renderMessages();
+
+  setBusy(true);
+  $('status').textContent = 'Cline is working...';
+
+  const loading = document.createElement('div');
+  loading.className = 'message assistant-message';
+  loading.textContent = 'Preparing reply...';
+  messages.appendChild(loading);
+  messages.scrollTop = messages.scrollHeight;
+
+  try{
+    const response = await fetch('/api/chat',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        prompt:text,
+        cwd:chat.cwd || '',
+        sessionId:chat.sessionId || '',
+        model:modelSelect.value || ''
+      })
+    });
+
+    const data = await response.json();
+    loading.remove();
+
+    if(data.sessionId) chat.sessionId = data.sessionId;
+    if(response.status === 400 && String(data.error || '').includes('Session not found')){
+      chat.sessionId = '';
+    }
+
+    if(data.stopped){
+      chat.messages.push({
+        role:'assistant',
+        text:((data.text || '') + '\n\n⏹ Stopped.').trim(),
+        tools: extractTools(data.events),
+        stats: data.stats
+      });
+    }else{
+      if(!response.ok || !data.ok){
+        throw new Error(data.error || 'Something went wrong while contacting Cline');
+      }
+      chat.messages.push({
+        role:'assistant',
+        text:data.text || 'Done, but Cline did not return any text.',
+        tools: extractTools(data.events),
+        stats: data.stats
+      });
+    }
+    renderMessages();
+  }catch(err){
+    loading.remove();
+    chat.messages.push({
+      role:'assistant',
+      text:'Error: ' + err.message
+    });
+    renderMessages();
+  }finally{
+    setBusy(false);
+    $('status').textContent = '';
+    promptBox.focus();
+  }
+}
+
+async function stopRun(){
+  $('status').textContent = 'Stopping...';
+  try{ await fetch('/api/stop', { method:'POST' }); }catch{}
+}
+
+/* ---------- Models dropdown (free models only, from the server) ---------- */
+function setModelOptions(list, selected, emptyText){
+  modelSelect.replaceChildren();
+  modelSelect.dataset.empty = list.length ? '0' : '1';
+  if(!list.length){
+    const o = document.createElement('option');
+    o.textContent = emptyText;
+    modelSelect.appendChild(o);
+    modelSelect.disabled = true;
+    return;
+  }
+  list.forEach(m => {
+    const o = document.createElement('option');
+    o.value = m.id;
+    o.textContent = m.name;
+    modelSelect.appendChild(o);
+  });
+  modelSelect.value = list.some(m => m.id === selected) ? selected : list[0].id;
+  modelSelect.disabled = busy;
+}
+
+// The server already returns only the free models (Cline's "Free" section).
+function renderModels(){
+  let saved = '';
+  try{ saved = localStorage.getItem(MODEL_KEY) || ''; }catch{}
+  setModelOptions(allModels, saved || currentDefault, 'No free models available');
+}
+
+async function loadModels(){
+  try{
+    const response = await fetch('/api/models');
+    const data = await response.json();
+    if(!response.ok) throw new Error(data.error || 'Failed to load models');
+    allModels = data.models || [];
+    currentDefault = data.current || '';
+    renderModels();
+  }catch(err){
+    allModels = [];
+    setModelOptions([], '', 'Could not load models');
+  }
+}
+
+modelSelect.addEventListener('change', () => {
+  try{ localStorage.setItem(MODEL_KEY, modelSelect.value); }catch{}
+});
+
+folderInput.addEventListener('change', () => {
+  try{ localStorage.setItem(FOLDER_KEY, folderInput.value.trim()); }catch{}
+});
+
+/* ---------- Input and buttons ---------- */
+$('chatForm').addEventListener('submit', e => {
+  e.preventDefault();
+  if(busy){
+    stopRun();
+    return;
+  }
+  const text = promptBox.value.trim();
+  if(!text) return;
+  promptBox.value = '';
+  promptBox.style.height = 'auto';
+  sendMessage(text);
+});
+
+promptBox.addEventListener('input', () => {
+  promptBox.style.height = 'auto';
+  promptBox.style.height =
+    Math.min(promptBox.scrollHeight, 180) + 'px';
+});
+
+// Enter writes a new line. Sending is done with the button,
+// or with Ctrl+Enter / Cmd+Enter on a keyboard.
+promptBox.addEventListener('keydown', e => {
+  if(e.key === 'Enter' && (e.ctrlKey || e.metaKey)){
+    e.preventDefault();
+    $('chatForm').requestSubmit();
+  }
+});
+
+$('newChat').onclick = newChat;
+$('menuBtn').onclick = () => $('sidebar').classList.toggle('open');
+$('overlay').onclick = () => $('sidebar').classList.remove('open');
+new MutationObserver(() => {
+  $('menuBtn').setAttribute('aria-expanded', String($('sidebar').classList.contains('open')));
+}).observe($('sidebar'), { attributes: true, attributeFilter: ['class'] });
+
+/* ---------- Start ---------- */
+setBusy(false);
+try{ folderInput.value = localStorage.getItem(FOLDER_KEY) || ''; }catch{}
+loadChats();
+if(chats.length){
+  currentChat = chats[0];
+  renderHistory();
+  renderMessages();
+}else{
+  newChat();
+}
+loadModels();
+</script>
+</body>
+</html>
