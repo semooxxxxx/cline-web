@@ -1,6 +1,6 @@
 # Cline Web Chat
 
-A mobile-friendly web chat for the [Cline](https://github.com/cline/cline) CLI. It runs on your own machine (for example in Termux on Android) and lets you chat with Cline from a phone browser.
+A mobile-friendly web chat for the [Cline](https://github.com/cline/cline) CLI. It runs on your own machine in Termux on Android and lets you chat with Cline from a phone browser. It works only with the Termux build of Cline (see Requirements).
 
 ## Features
 
@@ -16,6 +16,11 @@ A mobile-friendly web chat for the [Cline](https://github.com/cline/cline) CLI. 
 
 - Node.js 18 or newer
 - The Cline CLI installed, with at least one provider set up (`cline auth`)
+
+> **Compatibility:** this project was built and tested only with the Termux build of Cline
+> ([IChouChiang/cline-termux](https://github.com/IChouChiang/cline-termux), version 3.0.73-termux.1)
+> on Android. It relies on that CLI's JSON output and options. It has not been tested with
+> other builds of Cline, other Cline versions, or other operating systems, and may not work with them.
 
 ## Setup
 
