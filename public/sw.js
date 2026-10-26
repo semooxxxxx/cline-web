@@ -1,6 +1,6 @@
 // Caches the page shell so the app opens quickly from the home screen.
 // Chat requests (/api/...) always go to the network and are never cached.
-const CACHE = 'cline-chat-v1';
+const CACHE = 'cline-chat-v2';
 
 self.addEventListener('install', event => {
   event.waitUntil(
