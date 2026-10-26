@@ -1,14 +1,20 @@
 {
   "name": "cline-web",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Mobile-friendly web chat for the Cline CLI",
+  "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server.js",
+    "selftest": "node selftest.js"
   },
   "keywords": [],
   "type": "commonjs",
   "dependencies": {
     "express": "^5.3.0"
+  },
+  "license": "MIT",
+  "author": "wasim elwasimy",
+  "engines": {
+    "node": ">=18"
   }
 }

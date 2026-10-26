@@ -1,2 +1,8 @@
 node_modules/
 sessions.json
+sessions.json.tmp
+selftest-report.txt
+*.log
+*.bak
+*.backup*
+.env
