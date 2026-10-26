@@ -32,6 +32,17 @@ npm start
 
 Then open `http://127.0.0.1:3000` in your browser.
 
+## Install as an app
+
+The page is a Progressive Web App (PWA), so it can be installed and opened like a normal app, on a phone or on a desktop computer:
+
+- **Android (Chrome):** open the page, then menu → *Install app* (or *Add to Home screen*).
+- **Desktop (Chrome or Edge):** open the page and click the install icon in the address bar, or menu → *Install Cline Web*.
+
+Browsers only offer installation when the page is opened from `localhost` / `127.0.0.1` or from an `https://` address. A plain `http://` address on another machine usually cannot be installed.
+
+The app is only the page: the server still has to be running (`npm start`) for it to work.
+
 ## Options
 
 Environment variables:
