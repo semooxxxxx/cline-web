@@ -1,0 +1,1291 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#212121">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Cline">
+<title>Cline Chat</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+
+<style>
+*{box-sizing:border-box}
+
+/* ---------- Design tokens (dark, ChatGPT-like) ---------- */
+:root{
+  --bg:#212121;
+  --sidebar:#171717;
+  --surface:#2f2f2f;
+  --border:#2f2f2f;
+  --text:#ececec;
+  --muted:#8e8e8e;
+  --hover:#2a2a2a;
+  --accent:#ffffff;
+  --accent-text:#000000;
+  --danger:#ff6b6b;
+  --overlay:rgba(0,0,0,.6);
+  color-scheme:dark;
+}
+
+body{
+  margin:0;background:var(--bg);color:var(--text);
+  font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Arabic",Arial,sans-serif;
+  height:100vh;height:100dvh;display:flex;overflow:hidden;
+  -webkit-font-smoothing:antialiased;
+  -webkit-tap-highlight-color:transparent;
+  overscroll-behavior:none
+}
+button,textarea,input,select{font:inherit}
+button{cursor:pointer}
+
+/* ---------- Sidebar ---------- */
+.sidebar{
+  width:260px;background:var(--sidebar);padding:12px 10px;
+  display:flex;flex-direction:column;gap:6px;flex-shrink:0
+}
+.sidebar-head{display:flex;align-items:center;justify-content:space-between;padding:6px 8px 12px}
+.sidebar-logo{height:26px;width:auto;display:block}
+.new-chat{
+  background:transparent;border:0;color:var(--text);
+  border-radius:10px;padding:9px 10px;text-align:left;font-size:14px;
+  display:flex;align-items:center;gap:10px
+}
+.new-chat:hover{background:var(--hover)}
+.new-chat .plus{font-size:18px;line-height:1;width:20px;text-align:center}
+.field{padding:6px 10px 2px}
+.field-label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+.folder-input{
+  width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:10px;
+  background:var(--surface);color:var(--text);font-size:13px
+}
+.folder-input:focus{outline:none;border-color:#555}
+.folder-row{display:flex;gap:6px;align-items:center}
+.folder-row .folder-input{flex:1;min-width:0}
+.browse-btn{
+  border:1px solid var(--border);background:var(--surface);color:var(--text);
+  border-radius:10px;padding:8px 10px;font-size:13px;flex-shrink:0
+}
+.browse-btn:hover{background:var(--hover)}
+
+/* Folder picker dialog */
+.picker{
+  position:fixed;inset:0;background:var(--overlay);z-index:20;
+  display:flex;align-items:center;justify-content:center;padding:16px
+}
+.picker[hidden]{display:none}
+.picker-box{
+  background:var(--sidebar);border:1px solid var(--border);border-radius:14px;
+  width:min(420px,100%);max-height:80vh;display:flex;flex-direction:column
+}
+.picker-head{
+  padding:12px 14px;border-bottom:1px solid var(--border);
+  font-size:13px;color:var(--muted);overflow-wrap:anywhere
+}
+.picker-list{overflow-y:auto;padding:6px;flex:1;min-height:140px}
+.picker-item{
+  display:block;width:100%;text-align:left;border:0;background:transparent;
+  color:var(--text);padding:10px;border-radius:8px;font-size:14px
+}
+.picker-item:hover{background:var(--hover)}
+.picker-empty{color:var(--muted);font-size:13px;padding:12px}
+.picker-actions{
+  display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;
+  padding:10px;border-top:1px solid var(--border)
+}
+.picker-btn{
+  border:1px solid var(--border);background:transparent;color:var(--text);
+  border-radius:8px;padding:8px 12px;font-size:13px
+}
+.picker-btn:disabled{opacity:.4}
+.picker-btn.primary{background:var(--accent);color:var(--accent-text);border-color:var(--accent)}
+.field-note{font-size:11px;color:var(--muted);margin-top:4px}
+.sidebar-title{color:var(--muted);font-size:12px;margin:14px 10px 4px}
+#history{display:flex;flex-direction:column;gap:1px;overflow-y:auto;min-height:0}
+.history-row{display:flex;align-items:center;gap:2px;border-radius:10px}
+.history-row:hover,.history-row.active{background:var(--hover)}
+.history-item{
+  flex:1;min-width:0;border:0;background:transparent;color:var(--text);
+  padding:9px 10px;border-radius:10px;text-align:left;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px
+}
+.icon-btn{
+  background:transparent;border:0;color:var(--muted);
+  padding:6px 7px;border-radius:8px;font-size:13px;flex-shrink:0
+}
+.icon-btn:hover{color:var(--text)}
+.icon-btn.danger:hover{color:var(--danger)}
+.sidebar-footer{margin-top:auto;color:var(--muted);font-size:12px;line-height:1.7;padding:8px 10px}
+
+/* ---------- Main ---------- */
+.main{flex:1;min-width:0;display:flex;flex-direction:column;position:relative}
+.topbar{
+  height:52px;display:flex;align-items:center;gap:8px;
+  padding:0 12px;flex-shrink:0;background:var(--bg)
+}
+.menu-btn{display:none}
+.topbar-title{font-size:15px;color:var(--muted);padding:0 6px}
+
+.messages{
+  flex:1;overflow-y:auto;width:100%;padding:24px 16px 150px;
+  display:flex;flex-direction:column;gap:22px
+}
+
+/* ---------- Welcome ---------- */
+.welcome{margin:auto;max-width:600px;text-align:center;padding:20px 10px}
+.welcome-logo{width:56px;height:auto;display:block;margin:0 auto 18px;opacity:.9}
+.welcome h1{font-size:26px;font-weight:500;margin:0 0 10px;color:var(--text)}
+.welcome p{color:var(--muted);line-height:1.7;font-size:15px;margin:0}
+
+/* ---------- Messages ---------- */
+.message{width:100%;max-width:768px;margin:0 auto;line-height:1.7;overflow-wrap:anywhere;font-size:16px}
+.user-message{display:flex;justify-content:flex-end}
+.user-bubble{
+  background:var(--surface);border-radius:22px;padding:10px 16px;
+  max-width:82%;color:var(--text);white-space:pre-wrap
+}
+.assistant-message{padding:0}
+.msg-actions{display:flex;gap:6px;margin-top:6px}
+.copy-btn{
+  background:transparent;border:0;color:var(--muted);
+  border-radius:8px;padding:4px 8px;font-size:12px;font-family:inherit;flex-shrink:0
+}
+.copy-btn:hover{color:var(--text);background:var(--hover)}
+
+/* Markdown body */
+.rich{white-space:normal;overflow-wrap:anywhere}
+.rich p{margin:0 0 12px}
+.rich p:last-child{margin-bottom:0}
+.rich h3,.rich h4,.rich h5{margin:16px 0 8px;font-weight:600;line-height:1.3}
+.rich h3{font-size:19px}
+.rich h4{font-size:17px}
+.rich h5{font-size:16px}
+.rich ul,.rich ol{margin:0 0 12px;padding-inline-start:24px}
+.rich li{margin:3px 0}
+.rich strong{font-weight:600}
+.rich code{
+  font:0.88em ui-monospace,Menlo,Consolas,monospace;
+  background:var(--surface);padding:1px 6px;border-radius:6px
+}
+
+/* Code blocks */
+.code-block{
+  direction:ltr;text-align:left;margin:12px 0;
+  border:1px solid var(--border);border-radius:12px;overflow:hidden;
+  background:#0d0d0d
+}
+.code-head{
+  display:flex;justify-content:space-between;align-items:center;gap:8px;
+  padding:6px 12px;background:#1a1a1a;color:#a0a0a0;
+  font:12px ui-monospace,Menlo,Consolas,monospace
+}
+.code-block pre{
+  margin:0;padding:12px;overflow-x:auto;white-space:pre;
+  color:#f2f2f2;font:13px/1.5 ui-monospace,Menlo,Consolas,monospace
+}
+.code-block code{background:none;padding:0;font:inherit}
+.code-head .copy-btn{color:#bbb}
+
+/* Tool activity */
+.tools{margin:0 0 10px;font-size:13px;color:var(--muted)}
+.tools summary{cursor:pointer;padding:4px 0}
+.tool-item{padding:4px 0 4px 10px;border-inline-start:2px solid var(--border);margin:4px 0}
+.tool-item strong{font-weight:600;color:var(--text)}
+.tool-item.tool-error strong{color:var(--danger)}
+.tool-item pre{
+  white-space:pre-wrap;overflow-wrap:anywhere;margin:4px 0 0;max-height:160px;overflow:auto;
+  font:12px/1.4 ui-monospace,Menlo,Consolas,monospace;color:var(--muted)
+}
+.stats{font-size:12px;color:var(--muted);margin-top:6px}
+
+/* ---------- Composer ---------- */
+/* The composer floats over the messages; the gradient fades the text behind it. */
+.composer-wrap{
+  position:absolute;left:0;right:0;bottom:0;z-index:3;
+  padding:32px 16px 16px;
+  background:linear-gradient(to bottom,rgba(33,33,33,0),var(--bg) 45%)
+}
+.composer{max-width:768px;margin:auto}
+.input-box{
+  border:1px solid var(--border);background:var(--surface);border-radius:999px;
+  padding:6px 6px 6px 18px;display:flex;align-items:center;gap:8px;
+  transition:border-radius .15s
+}
+.input-box:focus-within{border-color:#4a4a4a}
+/* Small pill while idle. It grows when focused, when it has text, or while busy. */
+.model-chip{display:none}
+.input-box:focus-within,.input-box.open{
+  flex-wrap:wrap;border-radius:24px;padding:10px 10px 8px 16px
+}
+.input-box:focus-within textarea,.input-box.open textarea{flex:1 1 100%;order:1}
+.input-box:focus-within .model-chip,.input-box.open .model-chip{
+  display:inline-flex;order:2;margin-right:auto
+}
+.input-box:focus-within .send,.input-box.open .send{order:3}
+.model-chip{
+  align-items:center;gap:6px;max-width:70%;min-width:0;
+  background:var(--hover);color:var(--text);border:0;border-radius:999px;
+  padding:7px 12px;font-size:13px
+}
+.model-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.model-chip:disabled{opacity:.6}
+/* Model / provider sheet */
+.sheet{
+  position:fixed;inset:0;background:var(--overlay);z-index:30;
+  display:flex;align-items:flex-end;justify-content:center
+}
+.sheet[hidden]{display:none}
+.sheet-box{
+  background:var(--sidebar);border:1px solid var(--border);border-bottom:0;
+  border-radius:20px 20px 0 0;width:min(560px,100%);max-height:82vh;
+  display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom)
+}
+.sheet-head{display:flex;align-items:center;gap:8px;padding:12px 14px}
+.sheet-title{flex:1;text-align:center;font-size:16px;font-weight:600}
+.sheet-head .icon-btn{font-size:18px;width:36px}
+.sheet-body{overflow-y:auto;padding:0 10px 14px;display:flex;flex-direction:column;gap:6px}
+.sheet-row{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;
+  text-align:left;border:0;background:var(--surface);color:var(--text);
+  border-radius:12px;padding:13px 14px;font-size:15px
+}
+.sheet-row:hover{background:var(--hover)}
+.sheet-row small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.sheet-row .check{color:#7aa7ff}
+.sheet-label{color:var(--muted);font-size:12px;margin:10px 6px 2px}
+.sheet-input{
+  width:100%;background:var(--surface);color:var(--text);border:1px solid var(--border);
+  border-radius:12px;padding:12px 14px;font-size:16px
+}
+.sheet-note{color:var(--muted);font-size:12px;line-height:1.6;padding:2px 6px}
+.sheet-note code{background:var(--hover);padding:1px 5px;border-radius:5px}
+textarea{
+  flex:1;min-width:0;resize:none;max-height:180px;
+  border:0;outline:0;background:transparent;color:var(--text);
+  line-height:1.5;padding:7px 2px;font-size:16px
+}
+textarea::placeholder{color:var(--muted)}
+.send{
+  border:0;background:var(--accent);color:var(--accent-text);border-radius:50%;
+  width:34px;height:34px;padding:0;flex-shrink:0;line-height:0;
+  display:flex;align-items:center;justify-content:center;transition:opacity .15s
+}
+.send svg{display:block;margin:0;width:16px;height:16px}
+.send:hover:not(:disabled){opacity:.85}
+.send:disabled{opacity:.35;cursor:default}
+.hint{text-align:center;font-size:11px;color:var(--muted);margin-top:8px}
+.status{font-size:12px;color:var(--muted);min-height:18px;margin:4px 10px}
+
+/* Scrim behind the open drawer (hidden on desktop) */
+.overlay{display:none}
+
+/* ---------- Mobile ---------- */
+@media(max-width:650px){
+  .sidebar{
+    position:fixed;z-index:6;top:0;bottom:0;left:0;right:auto;
+    width:min(84vw,300px);
+    transform:translateX(-105%);transition:transform .22s ease;
+    visibility:hidden;
+    padding:calc(12px + env(safe-area-inset-top)) 10px calc(12px + env(safe-area-inset-bottom));
+  }
+  .sidebar.open{transform:translateX(0);visibility:visible}
+  .sidebar.open + .overlay{
+    display:block;position:fixed;inset:0;z-index:5;background:var(--overlay)
+  }
+
+  .menu-btn{
+    display:flex;align-items:center;justify-content:center;
+    width:42px;height:42px;margin-inline-start:-6px;
+    background:none;border:0;color:var(--text);font-size:22px;border-radius:10px
+  }
+  .menu-btn:active{background:var(--hover)}
+  .new-chat{padding:12px 10px;font-size:15px}
+  .history-item{padding:12px 10px;font-size:15px}
+  .icon-btn{padding:9px 10px}
+  .send{width:34px;height:34px}
+  .send svg{width:15px;height:15px}
+
+  .topbar{
+    height:auto;min-height:52px;padding:calc(6px + env(safe-area-inset-top)) 8px 6px
+  }
+
+  .messages{padding:18px 14px 140px;gap:20px}
+  .message{font-size:16px;line-height:1.65}
+  .welcome{padding:20px 4px}
+  .welcome h1{font-size:22px}
+
+  .composer-wrap{padding:24px 10px calc(10px + env(safe-area-inset-bottom))}
+  .input-box{padding:5px 5px 5px 16px}
+  .hint{font-size:10px;margin-top:6px}
+  .status{margin:2px 8px}
+}
+</style>
+</head>
+
+<body>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-head">
+    <img class="sidebar-logo" src="assets/logo.png" alt="Cline">
+  </div>
+  <button class="new-chat" id="newChat"><span class="plus">+</span>New chat</button>
+  <div class="field">
+    <label class="field-label" for="folder">Project folder</label>
+    <div class="folder-row">
+      <input class="folder-input" id="folder" autocomplete="off"
+        placeholder="e.g. projects/app (empty = home)">
+      <button class="browse-btn" id="browseBtn" type="button">Browse</button>
+    </div>
+    <div class="field-note">Changing it starts a new chat.</div>
+  </div>
+  <div class="sidebar-title">Your chats on this device</div>
+  <div id="history"></div>
+  <div class="sidebar-footer">
+    Runs on the Cline installed on your machine.
+  </div>
+</aside>
+<div class="overlay" id="overlay"></div>
+
+<div class="picker" id="picker" hidden>
+  <div class="picker-box" role="dialog" aria-modal="true" aria-label="Choose a folder">
+    <div class="picker-head" id="pickerPath"></div>
+    <div class="picker-list" id="pickerList"></div>
+    <div class="picker-actions">
+      <button class="picker-btn" id="pickerUp" type="button">Up</button>
+      <button class="picker-btn" id="pickerCancel" type="button">Cancel</button>
+      <button class="picker-btn primary" id="pickerSelect" type="button">Use this folder</button>
+    </div>
+  </div>
+</div>
+
+<div class="sheet" id="sheet" hidden>
+  <div class="sheet-box" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="sheet-head">
+      <button class="icon-btn" id="sheetBack" type="button" aria-label="Back" hidden>←</button>
+      <div class="sheet-title" id="sheetTitle">Select model</div>
+      <button class="icon-btn" id="sheetClose" type="button" aria-label="Close">✕</button>
+    </div>
+    <div class="sheet-body" id="sheetBody"></div>
+  </div>
+</div>
+
+<main class="main">
+  <header class="topbar">
+    <button class="menu-btn" id="menuBtn" aria-label="Menu" aria-expanded="false">☰</button>
+    <span class="topbar-title">Cline</span>
+  </header>
+
+  <section class="messages" id="messages">
+    <div class="welcome" id="welcome">
+      <img class="welcome-logo" src="assets/icon-192.png" alt="">
+      <h1>What can I help with?</h1>
+      <p>Type a message below to start.</p>
+    </div>
+  </section>
+
+  <footer class="composer-wrap">
+    <div class="composer">
+      <div class="status" id="status"></div>
+      <form class="input-box" id="chatForm">
+        <textarea id="prompt" dir="auto" rows="1"
+          placeholder="Message Cline..."
+          aria-label="Your message"></textarea>
+        <button class="model-chip" id="modelChip" type="button" aria-label="Choose model">
+          <span id="modelChipText">Loading...</span><span aria-hidden="true">▾</span>
+        </button>
+        <button class="send" id="send" type="submit" aria-label="Send" title="Send"></button>
+      </form>
+    </div>
+  </footer>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const messages = $('messages');
+const promptBox = $('prompt');
+const modelChip = $('modelChip');
+const folderInput = $('folder');
+const NEW_CHAT_TITLE = 'New chat';
+const MODEL_KEY = 'clineModel';
+const CHATS_KEY = 'clineChats';
+const FOLDER_KEY = 'clineFolder';
+
+const ICON_SEND = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 19V5M5.5 11.5L12 5l6.5 6.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ICON_STOP = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2.5" fill="currentColor"/></svg>';
+
+let busy = false;
+let chats = [];
+let currentChat = null;
+let allModels = [];
+let currentDefault = '';
+
+/* ---------- Conversations ---------- */
+function saveChats(){
+  try{ localStorage.setItem(CHATS_KEY, JSON.stringify(chats.slice(0, 50))); }catch{}
+}
+
+function loadChats(){
+  try{
+    const arr = JSON.parse(localStorage.getItem(CHATS_KEY) || '[]');
+    if(Array.isArray(arr)) chats = arr;
+  }catch{}
+}
+
+function newChat(){
+  currentChat = {
+    id: Date.now().toString(),
+    title: NEW_CHAT_TITLE,
+    cwd: folderInput.value.trim(),
+    messages: []
+  };
+  chats.unshift(currentChat);
+  renderHistory();
+  renderMessages();
+  $('status').textContent = '';
+  $('sidebar').classList.remove('open');
+}
+
+function openChat(chat){
+  if(busy && chat === currentChat) return;
+  currentChat = chat;
+  renderHistory();
+  renderMessages(true);
+  $('sidebar').classList.remove('open');
+}
+
+function renameChat(chat){
+  const name = prompt('Rename chat', chat.title);
+  if(name === null || !name.trim()) return;
+  chat.title = name.trim().slice(0, 60);
+  renderHistory();
+  saveChats();
+}
+
+function deleteChat(chat){
+  if(busy && chat === currentChat){
+    alert('Wait for the current reply to finish before deleting this chat.');
+    return;
+  }
+  if(!confirm('Delete this chat? This cannot be undone.')) return;
+  chats = chats.filter(c => c !== chat);
+  if(currentChat === chat){
+    currentChat = chats[0] || null;
+  }
+  if(!currentChat){
+    newChat();
+    return;
+  }
+  renderHistory();
+  renderMessages(true);
+}
+
+function renderHistory(){
+  const root = $('history');
+  root.replaceChildren();
+
+  chats.forEach(chat => {
+    const row = document.createElement('div');
+    row.className = 'history-row' + (chat === currentChat ? ' active' : '');
+
+    const open = document.createElement('button');
+    open.className = 'history-item';
+    open.textContent = chat.title;
+    open.title = chat.title;
+    open.onclick = () => openChat(chat);
+
+    const ren = document.createElement('button');
+    ren.className = 'icon-btn';
+    ren.type = 'button';
+    ren.title = 'Rename';
+    ren.setAttribute('aria-label', 'Rename chat');
+    ren.textContent = '✎';
+    ren.onclick = () => renameChat(chat);
+
+    const del = document.createElement('button');
+    del.className = 'icon-btn danger';
+    del.type = 'button';
+    del.title = 'Delete';
+    del.setAttribute('aria-label', 'Delete chat');
+    del.textContent = '✕';
+    del.onclick = () => deleteChat(chat);
+
+    row.append(open, ren, del);
+    root.appendChild(row);
+  });
+}
+
+/* ---------- Rendering ---------- */
+// Only DOM nodes and textContent are used, never innerHTML, so model output
+// cannot inject markup.
+function copyText(text, btn){
+  const done = () => {
+    const old = btn.textContent;
+    btn.textContent = 'Copied ✓';
+    setTimeout(() => { btn.textContent = old; }, 1500);
+  };
+  const fallback = () => {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try{ document.execCommand('copy'); done(); }catch{}
+    ta.remove();
+  };
+  if(navigator.clipboard && window.isSecureContext){
+    navigator.clipboard.writeText(text).then(done, fallback);
+  }else{
+    fallback();
+  }
+}
+
+// Inline: **bold**, *italic*, `code`. Line breaks become <br>.
+const INLINE_TOKEN = /(\*\*[^*\n]+\*\*|`[^`\n]+`|\*[^*\n]+\*)/g;
+
+function appendInline(el, text){
+  text.split('\n').forEach((line, i) => {
+    if(i) el.appendChild(document.createElement('br'));
+    const re = new RegExp(INLINE_TOKEN.source, 'g');
+    let last = 0;
+    let m;
+    while((m = re.exec(line)) !== null){
+      if(m.index > last) el.appendChild(document.createTextNode(line.slice(last, m.index)));
+      const t = m[0];
+      let node;
+      if(t.startsWith('**')){
+        node = document.createElement('strong');
+        node.textContent = t.slice(2, -2);
+      }else if(t.startsWith('`')){
+        node = document.createElement('code');
+        node.textContent = t.slice(1, -1);
+      }else{
+        node = document.createElement('em');
+        node.textContent = t.slice(1, -1);
+      }
+      el.appendChild(node);
+      last = re.lastIndex;
+    }
+    if(last < line.length) el.appendChild(document.createTextNode(line.slice(last)));
+  });
+}
+
+// Block-level Markdown: headings, bullet and numbered lists, paragraphs.
+// Each block gets dir="auto", so Arabic lines align right and English left.
+function renderMarkdown(parent, text){
+  let para = [];
+  let list = null;
+
+  const flushPara = () => {
+    if(para.length){
+      const p = document.createElement('p');
+      p.dir = 'auto';
+      appendInline(p, para.join('\n'));
+      parent.appendChild(p);
+      para = [];
+    }
+  };
+  const ensureList = tag => {
+    if(!list || list.tag !== tag){
+      flushPara();
+      list = { tag, el: document.createElement(tag) };
+      list.el.dir = 'auto';
+      parent.appendChild(list.el);
+    }
+    return list.el;
+  };
+
+  text.split('\n').forEach(raw => {
+    const line = raw.replace(/\s+$/, '');
+    let m;
+
+    if(!line.trim()){
+      flushPara();
+      list = null;
+      return;
+    }
+    if((m = line.match(/^(#{1,3})\s+(.*)$/))){
+      flushPara();
+      list = null;
+      const h = document.createElement('h' + (m[1].length + 2));
+      h.dir = 'auto';
+      appendInline(h, m[2]);
+      parent.appendChild(h);
+      return;
+    }
+    if((m = line.match(/^\s*[-*•]\s+(.*)$/))){
+      const li = document.createElement('li');
+      li.dir = 'auto';
+      appendInline(li, m[1]);
+      ensureList('ul').appendChild(li);
+      return;
+    }
+    if((m = line.match(/^\s*\d+[.)]\s+(.*)$/))){
+      const li = document.createElement('li');
+      li.dir = 'auto';
+      appendInline(li, m[1]);
+      ensureList('ol').appendChild(li);
+      return;
+    }
+    list = null;
+    para.push(line);
+  });
+  flushPara();
+}
+
+function codeBlock(lang, code){
+  const wrap = document.createElement('div');
+  wrap.className = 'code-block';
+
+  const head = document.createElement('div');
+  head.className = 'code-head';
+  const label = document.createElement('span');
+  label.textContent = lang || 'code';
+  const btn = document.createElement('button');
+  btn.className = 'copy-btn';
+  btn.type = 'button';
+  btn.textContent = 'Copy';
+  btn.onclick = () => copyText(code, btn);
+  head.append(label, btn);
+
+  const pre = document.createElement('pre');
+  const c = document.createElement('code');
+  c.textContent = code;
+  pre.appendChild(c);
+
+  wrap.append(head, pre);
+  return wrap;
+}
+
+// Splits fenced code blocks out, renders everything else as Markdown.
+function renderRich(parent, text){
+  const re = /```([\w+#.-]*)[ \t]*\n([\s\S]*?)```/g;
+  let last = 0;
+  let m;
+  while((m = re.exec(text)) !== null){
+    renderMarkdown(parent, text.slice(last, m.index));
+    parent.appendChild(codeBlock(m[1], m[2].replace(/\n$/, '')));
+    last = re.lastIndex;
+  }
+  renderMarkdown(parent, text.slice(last));
+}
+
+function renderTools(row, tools){
+  const d = document.createElement('details');
+  d.className = 'tools';
+  const s = document.createElement('summary');
+  const failed = tools.filter(t => t.error).length;
+  s.textContent = `Used ${tools.length} tool${tools.length > 1 ? 's' : ''}` +
+    (failed ? ` · ${failed} failed` : '');
+  d.appendChild(s);
+
+  tools.forEach(t => {
+    const item = document.createElement('div');
+    item.className = 'tool-item' + (t.error ? ' tool-error' : '');
+    const name = document.createElement('strong');
+    name.textContent = (t.error ? '✗ ' : '✓ ') + t.name;
+    item.appendChild(name);
+    const detail = t.error || t.output;
+    if(detail){
+      const pre = document.createElement('pre');
+      pre.textContent = detail;
+      item.appendChild(pre);
+    }
+    d.appendChild(item);
+  });
+
+  row.appendChild(d);
+}
+
+function statsLine(s){
+  if(!s) return '';
+  const parts = [];
+  // The model the CLI reports it really used (a model's own answer about its name is unreliable).
+  if(s.model) parts.push(String(s.model).replace(/^cline-free\//, ''));
+  if(s.iterations != null) parts.push(`${s.iterations} step${s.iterations === 1 ? '' : 's'}`);
+  if(s.durationMs != null) parts.push(`${(s.durationMs / 1000).toFixed(1)}s`);
+  if(s.inputTokens != null || s.outputTokens != null){
+    parts.push(`${s.inputTokens ?? 0} in / ${s.outputTokens ?? 0} out tokens`);
+  }
+  return parts.join(' · ');
+}
+
+// toEnd: jump to the newest message. Otherwise keep the current scroll
+// position, so a new reply does not pull the reader down.
+function renderMessages(toEnd){
+  saveChats();
+  const keep = messages.scrollTop;
+  messages.replaceChildren();
+
+  if(!currentChat || currentChat.messages.length === 0){
+    const welcome = document.createElement('div');
+    welcome.className = 'welcome';
+    welcome.innerHTML =
+      '<img class="welcome-logo" src="assets/icon-192.png" alt=""><h1>What can I help with?</h1><p>Type a message below to start.</p>';
+    messages.appendChild(welcome);
+    return;
+  }
+
+  currentChat.messages.forEach(m => {
+    const row = document.createElement('div');
+    row.className = 'message ' +
+      (m.role === 'user' ? 'user-message' : 'assistant-message');
+
+    if(m.role === 'user'){
+      const bubble = document.createElement('div');
+      bubble.className = 'user-bubble';
+      bubble.dir = 'auto';
+      bubble.textContent = m.text;
+      row.appendChild(bubble);
+    }else{
+      if(m.tools && m.tools.length) renderTools(row, m.tools);
+
+      const body = document.createElement('div');
+      body.className = 'rich';
+      renderRich(body, m.text);
+      row.appendChild(body);
+
+      const actions = document.createElement('div');
+      actions.className = 'msg-actions';
+      const copyAll = document.createElement('button');
+      copyAll.className = 'copy-btn';
+      copyAll.type = 'button';
+      copyAll.textContent = 'Copy';
+      copyAll.onclick = () => copyText(m.text, copyAll);
+      actions.appendChild(copyAll);
+      row.appendChild(actions);
+
+      const stats = statsLine(m.stats);
+      if(stats){
+        const s = document.createElement('div');
+        s.className = 'stats';
+        s.textContent = stats;
+        row.appendChild(s);
+      }
+    }
+
+    messages.appendChild(row);
+  });
+
+  messages.scrollTop = toEnd ? messages.scrollHeight : keep;
+}
+
+// Put the top of the newest reply at the top of the screen, so the reader
+// starts from the beginning of the answer.
+function scrollToLastReply(){
+  const replies = messages.querySelectorAll('.assistant-message');
+  const last = replies[replies.length - 1];
+  if(!last) return;
+  const offset = last.getBoundingClientRect().top - messages.getBoundingClientRect().top;
+  messages.scrollTop += offset - 16;
+}
+
+/* ---------- Busy state (send button becomes Stop) ---------- */
+function setBusy(on){
+  busy = on;
+  const send = $('send');
+  send.innerHTML = on ? ICON_STOP : ICON_SEND;
+  send.setAttribute('aria-label', on ? 'Stop' : 'Send');
+  send.title = on ? 'Stop' : 'Send';
+  modelChip.disabled = on;
+  $('chatForm').classList.toggle('open', on || !!promptBox.value.trim());
+}
+
+/* ---------- Sending ---------- */
+// Tool calls from the CLI's JSON events (content_end for tool results).
+function extractTools(events){
+  const out = [];
+  (events || []).forEach(ev => {
+    const e = ev && ev.type === 'agent_event' ? ev.event : null;
+    if(!e || e.type !== 'content_end' || e.contentType !== 'tool') return;
+    if(e.toolName === 'ask_question') return;
+    let output = '';
+    if(e.output != null){
+      output = typeof e.output === 'string' ? e.output : JSON.stringify(e.output);
+      output = output.slice(0, 1500);
+    }
+    out.push({ name: e.toolName || 'tool', error: e.error || '', output });
+  });
+  return out;
+}
+
+async function sendMessage(text){
+  if(busy || !text.trim()) return;
+
+  if(!currentChat) newChat();
+
+  const chat = currentChat;
+  const history = chat.messages.slice(-12).map(m => ({ role: m.role, text: m.text }));
+  chat.messages.push({role:'user', text});
+  if(chat.title === NEW_CHAT_TITLE){
+    chat.title = text.slice(0,32);
+  }
+
+  renderHistory();
+  renderMessages(true);
+
+  setBusy(true);
+  $('status').textContent = 'Cline is working...';
+
+  const loading = document.createElement('div');
+  loading.className = 'message assistant-message';
+  loading.textContent = 'Preparing reply...';
+  messages.appendChild(loading);
+  messages.scrollTop = messages.scrollHeight;
+
+  try{
+    const response = await fetch('/api/chat',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        prompt:text,
+        cwd:chat.cwd || '',
+        sessionId:chat.sessionId || '',
+        model:getModel(),
+        provider:providerId,
+        history
+      })
+    });
+
+    let data;
+    try{
+      data = await response.json();
+    }catch{
+      data = { error:'The server sent an unexpected reply.' };
+    }
+    loading.remove();
+
+    if(data.sessionId) chat.sessionId = data.sessionId;
+    if(response.status === 400 && String(data.error || '').includes('Session not found')){
+      chat.sessionId = '';
+    }
+
+    if(data.stopped){
+      chat.messages.push({
+        role:'assistant',
+        text:((data.text || '') + '\n\n⏹ Stopped.').trim(),
+        tools: extractTools(data.events),
+        stats: data.stats
+      });
+    }else{
+      if(response.status === 409){
+        throw new Error('Cline is busy. Wait for the current reply to finish.');
+      }
+      if(!response.ok || !data.ok){
+        throw new Error(data.error || 'Something went wrong while contacting Cline.');
+      }
+      chat.messages.push({
+        role:'assistant',
+        text:data.text || 'Done, but Cline did not return any text.',
+        tools: extractTools(data.events),
+        stats: data.stats
+      });
+    }
+    renderMessages();
+    scrollToLastReply();
+  }catch(err){
+    loading.remove();
+    chat.messages.push({
+      role:'assistant',
+      text:(err instanceof TypeError)
+        ? 'Lost connection to the server. Make sure the Cline app is still running.'
+        : err.message
+    });
+    renderMessages();
+  }finally{
+    setBusy(false);
+    $('status').textContent = '';
+  }
+}
+
+async function stopRun(){
+  $('status').textContent = 'Stopping...';
+  try{ await fetch('/api/stop', { method:'POST' }); }catch{}
+}
+
+/* ---------- Provider + model (chip in the composer, bottom sheet) ---------- */
+const PROVIDER_KEY = 'clineProvider';
+let providers = [];        // providers set up in the CLI, with their status
+let otherProviders = [];   // supported by Cline but not set up yet
+let providerId = '';
+let modelsState = 'loading';  // loading | ok | error
+let modelsMessage = '';
+let sheetView = 'main';
+
+try{ providerId = localStorage.getItem(PROVIDER_KEY) || ''; }catch{}
+
+// Shows a short readable name: "cline-free/nemotron-3.5-super-vl" -> "nemotron-3.5-super-vl".
+function modelLabel(m){
+  if(m.name && m.name !== m.id) return m.name;
+  return m.id.replace(/^cline-free\//, '');
+}
+
+function providerInfo(id){
+  return providers.find(p => p.id === id) || { id, name:id };
+}
+
+function modelKey(provider){
+  return MODEL_KEY + ':' + provider;
+}
+
+function savedModel(provider){
+  try{
+    return localStorage.getItem(modelKey(provider)) ||
+      (provider === 'cline' ? (localStorage.getItem(MODEL_KEY) || '') : '');
+  }catch{ return ''; }
+}
+
+// The model that will be sent. Only models the server listed are used.
+function getModel(){
+  if(!allModels.length) return '';
+  const saved = savedModel(providerId);
+  if(allModels.some(m => m.id === saved)) return saved;
+  if(allModels.some(m => m.id === currentDefault)) return currentDefault;
+  return allModels[0].id;
+}
+
+function saveModel(id){
+  try{
+    localStorage.setItem(modelKey(providerId), id);
+    if(providerId === 'cline') localStorage.setItem(MODEL_KEY, id);
+  }catch{}
+}
+
+function updateChip(){
+  const model = getModel();
+  let text;
+  if(model){
+    const m = allModels.find(x => x.id === model);
+    text = m ? modelLabel(m) : model;
+    if(providerId && providerId !== 'cline') text = providerInfo(providerId).name + ' · ' + text;
+  }else{
+    text = modelsState === 'loading' ? 'Loading...' : 'No model available';
+  }
+  $('modelChipText').textContent = text;
+}
+
+function el(tag, cls, text){
+  const e = document.createElement(tag);
+  if(cls) e.className = cls;
+  if(text !== undefined) e.textContent = text;
+  return e;
+}
+
+function providerNote(p){
+  if(p.reason) return p.reason;
+  if(!p.authenticated) return 'credentials missing';
+  if(p.catalog === 'error') return 'catalogue unavailable';
+  if(p.catalog === 'empty') return 'no free models';
+  if(!p.usable) return 'unavailable';
+  return p.freeCount ? p.freeCount + (p.freeCount === 1 ? ' free model' : ' free models') : 'ready';
+}
+
+function renderSheet(){
+  const body = $('sheetBody');
+  body.replaceChildren();
+  $('sheetBack').hidden = sheetView === 'main';
+
+  if(sheetView === 'providers'){
+    $('sheetTitle').textContent = 'Select provider';
+    const search = el('input', 'sheet-input');
+    search.type = 'search';
+    search.placeholder = 'Search providers...';
+    search.setAttribute('aria-label', 'Search providers');
+    const list = el('div');
+    list.style.cssText = 'display:flex;flex-direction:column;gap:6px';
+    const fill = () => {
+      const q = search.value.trim().toLowerCase();
+      const match = p => !q || (p.name || '').toLowerCase().includes(q) || p.id.toLowerCase().includes(q);
+      list.replaceChildren();
+
+      const mine = providers.filter(match);
+      if(mine.length) list.appendChild(el('div', 'sheet-label', 'Set up in Cline'));
+      mine.forEach(p => {
+        const row = el('button', 'sheet-row');
+        row.type = 'button';
+        const label = el('span', '', p.name || p.id);
+        label.appendChild(el('small', '', providerNote(p)));
+        row.appendChild(label);
+        if(p.id === providerId) row.appendChild(el('span', 'check', '✓'));
+        if(p.usable){
+          row.onclick = () => chooseProvider(p.id);
+        }else{
+          row.disabled = true;
+          row.style.opacity = '.55';
+        }
+        list.appendChild(row);
+      });
+
+      const rest = otherProviders.filter(match);
+      if(rest.length){
+        list.appendChild(el('div', 'sheet-label', 'Not set up yet (run cline auth <name> in Termux)'));
+        rest.forEach(p => {
+          const row = el('button', 'sheet-row');
+          row.type = 'button';
+          row.disabled = true;
+          row.style.opacity = '.55';
+          const label = el('span', '', p.name || p.id);
+          label.appendChild(el('small', '', 'cline auth ' + p.id));
+          row.appendChild(label);
+          list.appendChild(row);
+        });
+      }
+      if(!mine.length && !rest.length) list.appendChild(el('div', 'sheet-note', 'No provider matches.'));
+    };
+    search.addEventListener('input', fill);
+    body.append(search, list);
+    fill();
+    return;
+  }
+
+  $('sheetTitle').textContent = 'Select model';
+  const provRow = el('button', 'sheet-row');
+  provRow.type = 'button';
+  const provLabel = el('span', '', 'Provider');
+  provLabel.appendChild(el('small', '', providerId ? (providerInfo(providerId).name || providerId) : 'None'));
+  provRow.append(provLabel, el('span', '', '›'));
+  provRow.onclick = () => { sheetView = 'providers'; renderSheet(); };
+  body.appendChild(provRow);
+
+  body.appendChild(el('div', 'sheet-label', 'Free models'));
+
+  if(modelsState === 'loading'){
+    body.appendChild(el('div', 'sheet-note', 'Loading models...'));
+    return;
+  }
+  if(!allModels.length){
+    body.appendChild(el('div', 'sheet-note', modelsMessage || 'No free models available for this provider.'));
+    return;
+  }
+  const current = getModel();
+  allModels.forEach(m => {
+    const row = el('button', 'sheet-row');
+    row.type = 'button';
+    row.appendChild(el('span', '', modelLabel(m)));
+    if(m.id === current) row.appendChild(el('span', 'check', '✓'));
+    row.onclick = () => { saveModel(m.id); updateChip(); closeSheet(); };
+    body.appendChild(row);
+  });
+}
+
+function openSheet(){
+  if(busy) return;
+  sheetView = 'main';
+  renderSheet();
+  $('sheet').hidden = false;
+}
+
+function closeSheet(){
+  $('sheet').hidden = true;
+  promptBox.focus();
+}
+
+function chooseProvider(id){
+  providerId = id;
+  try{ localStorage.setItem(PROVIDER_KEY, id); }catch{}
+  sheetView = 'main';
+  loadModels();
+}
+
+modelChip.addEventListener('click', openSheet);
+$('sheetClose').onclick = closeSheet;
+$('sheetBack').onclick = () => { sheetView = 'main'; renderSheet(); };
+$('sheet').addEventListener('click', e => { if(e.target === $('sheet')) closeSheet(); });
+document.addEventListener('keydown', e => {
+  if(e.key === 'Escape' && !$('sheet').hidden) closeSheet();
+});
+
+async function loadProviders(){
+  try{
+    const response = await fetch('/api/providers');
+    const data = await response.json();
+    if(!response.ok) throw new Error(data.error || 'Could not load providers');
+    providers = Array.isArray(data.providers) ? data.providers : [];
+    otherProviders = Array.isArray(data.others) ? data.others : [];
+  }catch{
+    providers = [];
+    otherProviders = [];
+  }
+  const usable = providers.filter(p => p.usable);
+  if(!usable.some(p => p.id === providerId)) providerId = usable[0] ? usable[0].id : '';
+  if(providerId){
+    try{ localStorage.setItem(PROVIDER_KEY, providerId); }catch{}
+    await loadModels();
+  }else{
+    allModels = [];
+    modelsState = 'error';
+    modelsMessage = providers.length
+      ? 'No provider with free models is ready. Check the list under Provider.'
+      : 'No providers found. Run cline auth in Termux first.';
+    updateChip();
+  }
+}
+
+let modelRequestId = 0;
+
+// Free models of the chosen provider, from the server.
+async function loadModels(){
+  const requestId = ++modelRequestId;
+  const provider = providerId;
+  allModels = [];
+  currentDefault = '';
+  modelsState = 'loading';
+  modelsMessage = '';
+  updateChip();
+  if(!$('sheet').hidden) renderSheet();
+
+  try{
+    const response = await fetch('/api/models?provider=' + encodeURIComponent(provider));
+    const data = await response.json();
+    if(requestId !== modelRequestId) return;
+    if(!response.ok) throw new Error(data.error || 'Could not load models');
+    allModels = Array.isArray(data.models) ? data.models : [];
+    currentDefault = data.current || '';
+    modelsState = 'ok';
+    modelsMessage = data.catalogError || '';
+  }catch(err){
+    if(requestId !== modelRequestId) return;
+    allModels = [];
+    modelsState = 'error';
+    modelsMessage = err.message || 'Could not load models';
+  }
+  updateChip();
+  if(!$('sheet').hidden) renderSheet();
+}
+
+// A chat stays in the folder it was started in. Changing the folder therefore
+// starts a new chat there (an empty chat just takes the new folder).
+folderInput.addEventListener('change', () => {
+  const folder = folderInput.value.trim();
+  try{ localStorage.setItem(FOLDER_KEY, folder); }catch{}
+  if(!currentChat || busy || (currentChat.cwd || '') === folder) return;
+  if(currentChat.messages.length){
+    newChat();
+    $('status').textContent = 'New chat started in: ' + (folder || 'home folder');
+  }else{
+    currentChat.cwd = folder;
+    saveChats();
+  }
+});
+
+/* ---------- Folder picker ---------- */
+// Shows the folders inside HOME. The chosen folder is stored relative to HOME,
+// and an empty value means HOME itself.
+let pickerPath = '';
+let pickerParent = null;
+
+async function loadFolder(rel){
+  const list = $('pickerList');
+  list.replaceChildren();
+  try{
+    const response = await fetch('/api/folders?path=' + encodeURIComponent(rel));
+    const data = await response.json();
+    if(!response.ok) throw new Error(data.error || 'Could not open this folder');
+
+    pickerPath = data.path;
+    pickerParent = data.parent;
+    $('pickerPath').textContent = '~' + (data.path ? '/' + data.path : '');
+    $('pickerUp').disabled = data.parent === null;
+
+    if(!data.folders.length){
+      const empty = document.createElement('div');
+      empty.className = 'picker-empty';
+      empty.textContent = 'No folders here.';
+      list.appendChild(empty);
+    }
+    data.folders.forEach(name => {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'picker-item';
+      item.textContent = '📁 ' + name;
+      item.onclick = () => loadFolder(pickerPath ? pickerPath + '/' + name : name);
+      list.appendChild(item);
+    });
+  }catch(err){
+    const msg = document.createElement('div');
+    msg.className = 'picker-empty';
+    msg.textContent = err.message;
+    list.appendChild(msg);
+  }
+}
+
+$('browseBtn').onclick = () => {
+  $('picker').hidden = false;
+  loadFolder(folderInput.value.trim());
+};
+$('pickerUp').onclick = () => { if(pickerParent !== null) loadFolder(pickerParent); };
+$('pickerCancel').onclick = () => { $('picker').hidden = true; };
+$('pickerSelect').onclick = () => {
+  folderInput.value = pickerPath;
+  folderInput.dispatchEvent(new Event('change'));
+  $('picker').hidden = true;
+};
+$('picker').addEventListener('click', e => {
+  if(e.target === $('picker')) $('picker').hidden = true;
+});
+
+/* ---------- Input and buttons ---------- */
+$('chatForm').addEventListener('submit', e => {
+  e.preventDefault();
+  if(busy){
+    stopRun();
+    return;
+  }
+  const text = promptBox.value.trim();
+  if(!text) return;
+  if(!providerId || !getModel()){
+    $('status').textContent = 'Choose a provider and a free model first.';
+    openSheet();
+    return;
+  }
+  promptBox.value = '';
+  promptBox.style.height = 'auto';
+  $('chatForm').classList.remove('open');
+  sendMessage(text);
+});
+
+promptBox.addEventListener('input', () => {
+  $('chatForm').classList.toggle('open', busy || !!promptBox.value.trim());
+  promptBox.style.height = 'auto';
+  promptBox.style.height =
+    Math.min(promptBox.scrollHeight, 180) + 'px';
+});
+
+// Enter writes a new line. Sending is done with the button,
+// or with Ctrl+Enter / Cmd+Enter on a keyboard.
+promptBox.addEventListener('keydown', e => {
+  if(e.key === 'Enter' && (e.ctrlKey || e.metaKey)){
+    e.preventDefault();
+    $('chatForm').requestSubmit();
+  }
+});
+
+$('newChat').onclick = newChat;
+$('menuBtn').onclick = () => $('sidebar').classList.toggle('open');
+$('overlay').onclick = () => $('sidebar').classList.remove('open');
+new MutationObserver(() => {
+  $('menuBtn').setAttribute('aria-expanded', String($('sidebar').classList.contains('open')));
+}).observe($('sidebar'), { attributes: true, attributeFilter: ['class'] });
+
+/* ---------- Start ---------- */
+// Lets the page be installed to the home screen and open like an app.
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+setBusy(false);
+try{ folderInput.value = localStorage.getItem(FOLDER_KEY) || ''; }catch{}
+loadChats();
+if(chats.length){
+  currentChat = chats[0];
+  renderHistory();
+  renderMessages(true);
+}else{
+  newChat();
+}
+loadProviders();
+</script>
+</body>
+</html>
