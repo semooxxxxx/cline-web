@@ -23,14 +23,55 @@ A mobile-friendly web chat for the [cline-termux](https://github.com/IChouChiang
 > and options. It is not meant for, and has not been tested with, the official Cline CLI or any other
 > build or operating system.
 
-## Setup
+## Setup (Android, Termux)
+
+1. **Install the Termux build of Cline** from
+   [IChouChiang/cline-termux](https://github.com/IChouChiang/cline-termux), following its instructions.
+2. **Set up a provider** (once), and check that `cline` runs:
+
+   ```bash
+   cline auth
+   ```
+
+3. **Install Node.js and git**, then download this project:
+
+   ```bash
+   pkg install -y nodejs git
+   git clone https://github.com/semooxxxxx/cline-web
+   cd cline-web
+   npm install
+   ```
+
+4. **Start the server** and keep that Termux window open:
+
+   ```bash
+   termux-wake-lock
+   npm start
+   ```
+
+   `termux-wake-lock` asks Android not to put Termux to sleep, so the server is not killed while the screen is off.
+5. **Open the page** in Chrome at `http://127.0.0.1:3000`. To use it like an app, see "Install as an app" below.
+6. **Use it:** tap the box at the bottom, choose a provider and a model with the button under the message,
+   choose the project folder with *Browse* in the side menu, then send a message.
+
+To update later: `cd cline-web && git pull && npm install`, then start the server again.
+
+If something does not work, run the self-test in a second Termux window while the server is running:
+
+```bash
+cd cline-web && npm run selftest
+```
+
+It writes `~/selftest-report.txt` (no keys or chat text inside), which is useful to attach to a bug report.
+
+For other setups, the short version is:
 
 ```bash
 npm install
 npm start
 ```
 
-Then open `http://127.0.0.1:3000` in your browser.
+then open `http://127.0.0.1:3000`.
 
 ## Install as an app
 
